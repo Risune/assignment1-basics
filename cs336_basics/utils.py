@@ -24,7 +24,7 @@ def cross_entropy_loss(inputs: torch.Tensor, targets: torch.Tensor) -> torch.Ten
   scaled = inputs - max_num.values
   exp_sum = einops.reduce(torch.exp(scaled), "... d -> ... 1", "sum")
   log_softmax = scaled - torch.log(exp_sum)
-  selection = log_softmax.gather(-1, einops.rearrange(targets, "... idx -> ... idx 1"))
+  selection = log_softmax.gather(-1, einops.rearrange(targets, "... idx -> ... idx 1").long())
   return -selection.mean()
 
 

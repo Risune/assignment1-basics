@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import einops
 import math
-from . import utils
+from cs336_basics import utils
 
 
 class Linear(nn.Module):
@@ -26,7 +26,7 @@ class Embedding(nn.Module):
   
   def forward(self, x: torch.Tensor) -> torch.Tensor:
     B, T = x.shape
-    flat_x = einops.rearrange(x, "b t -> (b t)")
+    flat_x = einops.rearrange(x, "b t -> (b t)").long()
     flat_y = torch.index_select(self.embedding, 0, flat_x)
     return einops.rearrange(flat_y, "(b t) ... -> b t ...", b=B, t=T)
 
@@ -90,6 +90,7 @@ class MultiHeadSelfAttention(nn.Module):
   def __init__(self, d_model: int, num_heads: int,  max_seq_len: int=0, theta: float=0, device=None, dtype=None):
     super().__init__()
     self.num_heads = num_heads
+    self.device = device
     self.wq = Linear(d_model, d_model, device, dtype)
     self.wk = Linear(d_model, d_model, device, dtype)
     self.wv = Linear(d_model, d_model, device, dtype)
@@ -104,7 +105,7 @@ class MultiHeadSelfAttention(nn.Module):
     Q, K, V = self.wq(x), self.wk(x), self.wv(x)
     mh_Q, mh_K, mh_V = (einops.rearrange(y, "... seq (heads dh) -> ... heads seq dh", heads=self.num_heads) 
                         for y in [Q, K, V])
-    mask = torch.tril(torch.ones(seq_length, seq_length))
+    mask = torch.tril(torch.ones((seq_length, seq_length), device=self.device))
     if self.rope is not None:
       mh_Q, mh_K = self.rope(mh_Q, token_positions), self.rope(mh_K, token_positions)
     attn_v = utils.scaled_dot_product_attention(mh_Q, mh_K, mh_V, mask)
@@ -115,10 +116,10 @@ class MultiHeadSelfAttention(nn.Module):
 class TransformerBlock(nn.Module):
   def __init__(self, d_model: int, n_heads: int, d_ff: int, max_seq_len: int, theta: float, device=None, dtype=None):
     super().__init__()
-    self.rms_norm = RMSNorm(d_model)
+    self.rms_norm = RMSNorm(d_model, device=device, dtype=dtype)
     self.attn = MultiHeadSelfAttention(d_model, n_heads, max_seq_len, theta, device=device, dtype=dtype)
     self.ffn = nn.Sequential(
-      RMSNorm(d_model),
+      RMSNorm(d_model, device=device, dtype=dtype),
       SwiGlu(d_model, d_ff, device=device, dtype=dtype)
     )
   
@@ -148,5 +149,6 @@ class Transformer(nn.Module):
 
 
 if __name__ == "__main__":
-  t = Transformer(50257, 1024, 1600, 48, 25, 6400, 10000)
-  print(sum(x.numel() for x in t.parameters() if x.requires_grad))
+  seq_length = 10
+  device = "mps"
+  print(torch.tril(torch.ones((seq_length, seq_length), device=device)))

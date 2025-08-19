@@ -480,7 +480,7 @@ def run_get_batch(
         language modeling labels.
     """
     from cs336_basics import trainer
-    return trainer.get_batch(torch.Tensor(dataset), batch_size, context_length, device)
+    return trainer.get_batch(dataset, batch_size, context_length, device)
 
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:

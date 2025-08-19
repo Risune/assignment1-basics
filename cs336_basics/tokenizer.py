@@ -222,6 +222,9 @@ class Tokenizer():
     bs = b"".join([self.vocab[id] for id in ids if id in self.vocab])
     return bs.decode("utf-8", errors="replace")
 
+  def vocab_size(self):
+    return len(self.vocab)
+
 
 if __name__ == "__main__":
   pass
