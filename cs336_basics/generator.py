@@ -58,11 +58,11 @@ if __name__ == "__main__":
   hlm_data_file = "data/hlm.dat"
   hlm_model_file = "model/hlm.model"
 
-  context_length = 64
-  d_model = 768
-  num_layers = 12
-  num_heads = 12
-  d_ff = d_model * 8 // 3
+  context_length = 256
+  d_model = 512
+  num_layers = 4
+  num_heads = 16
+  d_ff = 1344
   rope_theta = 10000
 
   # stop_word = "<|endoftext|>"

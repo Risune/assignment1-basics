@@ -239,7 +239,7 @@ class SimpleChineseTokenizer():
     self.reversed_vocab = {v: k for k, v in self.vocab.items()}
 
   def encode(self, text: str) -> list[int]:
-    return [self.reversed_vocab[c] for c in text]
+    return [self.reversed_vocab[c] for c in text if c in self.reversed_vocab]
 
   def decode(self, ids: list[int]) -> str:
     return "".join([self.vocab[id] for id in ids if id in self.vocab])

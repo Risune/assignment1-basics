@@ -16,8 +16,8 @@ def get_batch(dataset, batch_size: int, context_length: int, device: str) -> tup
   targets = torch.empty((batch_size, context_length))
   for i in range(batch_size):
     start = random.randint(0, length - context_length - 1)
-    inputs[i, :] = torch.from_numpy(dataset[start:start+context_length])
-    targets[i, :] = torch.from_numpy(dataset[start+1:start+context_length+1])
+    inputs[i, :] = torch.from_numpy(dataset[start:start+context_length].copy())
+    targets[i, :] = torch.from_numpy(dataset[start+1:start+context_length+1].copy())
   return (inputs.to(device), targets.to(device))
 
 
@@ -81,13 +81,13 @@ if __name__ == "__main__":
   hlm_data_file = "data/hlm.dat"
   hlm_model_file = "model/hlm.model"
 
-  iters = 10000
-  batch_size = 16
-  context_length = 64
-  d_model = 768
-  num_layers = 12
-  num_heads = 12
-  d_ff = d_model * 8 // 3
+  iters = 5000
+  batch_size = 32
+  context_length = 256
+  d_model = 512
+  num_layers = 4
+  num_heads = 16
+  d_ff = 1344
   rope_theta = 10000
 
   max_l2_norm = 1e-2
