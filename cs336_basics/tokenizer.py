@@ -96,7 +96,11 @@ def build_bpe_tokenizer(
   with open(input_path) as fp:
     text = fp.read()
     print("file loaded, cost: %ss" % (time.time() - start))
-  word_counter = construct_word_counter(regex.split("|".join([regex.escape(x) for x in special_tokens]), text))
+  if special_tokens is not None and len(special_tokens) > 0:
+    groups = regex.split("|".join([regex.escape(x) for x in special_tokens]), text)
+  else:
+    groups = [text]
+  word_counter = construct_word_counter(groups)
   words = {word: Word(word, count) for word, count in word_counter.items()}
   print("construct word counter, cost: %ss" % (time.time() - start))
   
@@ -123,7 +127,7 @@ def build_bpe_tokenizer(
 
   while len(vocab) < vocab_size:
     if len(vocab) % 1000 == 0:
-      print("processing %s, cost: %s", (len(vocab), time.time() - start))
+      print("processing %s, cost: %s" % (len(vocab), time.time() - start))
     items = list(pair_counter.items())
     pair, _ = max(items, key=lambda x:(x[1], x[0].to_tuple()))
     merges.append(pair.to_tuple())
@@ -226,5 +230,37 @@ class Tokenizer():
     return len(self.vocab)
 
 
+class SimpleChineseTokenizer():
+  def __init__(self, text_file: str):
+    with open(text_file) as fp:
+      text = fp.read()
+    chars = sorted(list(set(text)))
+    self.vocab = {i: ch for i, ch in enumerate(chars)}
+    self.reversed_vocab = {v: k for k, v in self.vocab.items()}
+
+  def encode(self, text: str) -> list[int]:
+    return [self.reversed_vocab[c] for c in text]
+
+  def decode(self, ids: list[int]) -> str:
+    return "".join([self.vocab[id] for id in ids if id in self.vocab])
+
+  def vocab_size(self):
+    return len(self.vocab)
+
+
 if __name__ == "__main__":
-  pass
+  # tokenizer = SimpleChineseTokenizer("data/hlm.txt")
+  # with open("data/hlm.txt") as fp:
+  #   text = fp.read()
+  # encoded = tokenizer.encode(text)
+  # import numpy as np
+  # np_fp = np.memmap("data/hlm.dat", dtype="uint16", mode="w+", shape=(len(encoded)))
+  # np_fp[:] = encoded
+  # np_fp.flush()
+  import numpy as np
+  hlm_file = "data/hlm.txt"
+  hlm_data = "data/hlm.dat"
+  tokenizer = SimpleChineseTokenizer(hlm_file)
+  tokenized_train_data = np.memmap(hlm_data, dtype="uint16", mode="r")
+  sample = tokenized_train_data[:30]
+  print(tokenizer.decode(sample))

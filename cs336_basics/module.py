@@ -136,6 +136,7 @@ class Transformer(nn.Module):
                num_layers: int, num_heads: int, d_ff: int, rope_theta: float,
                device=None, dtype=None):
     super().__init__()
+    self.context_length = context_length
     self.embedding = Embedding(vocab_size, d_model, device, dtype)
     self.blocks = nn.Sequential(*[TransformerBlock(d_model, num_heads, d_ff, context_length, rope_theta, device, dtype)
                                   for _ in range(num_layers)])
@@ -146,6 +147,9 @@ class Transformer(nn.Module):
     emb = self.embedding(x)
     attn = self.blocks(emb)
     return self.final(self.final_norm(attn))
+
+  def get_max_seq_length(self):
+    return self.context_length
 
 
 if __name__ == "__main__":

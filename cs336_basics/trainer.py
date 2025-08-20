@@ -3,7 +3,7 @@ import random
 import os
 import typing
 import numpy as np
-from cs336_basics.tokenizer import Tokenizer
+from cs336_basics.tokenizer import Tokenizer, SimpleChineseTokenizer
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 from cs336_basics.module import Transformer
 from cs336_basics.opt import AdamW
@@ -38,8 +38,10 @@ def load_checkpoint(src: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],
                     model: torch.nn.Module, 
                     optimizer: torch.optim.Optimizer):
   state = torch.load(src)
-  model.load_state_dict(state["model"])
-  optimizer.load_state_dict(state["optimizer"])
+  if model is not None:
+    model.load_state_dict(state["model"])
+  if optimizer is not None:
+    optimizer.load_state_dict(state["optimizer"])
   return state["iters"]
 
 
@@ -73,7 +75,11 @@ if __name__ == "__main__":
   merges_path = "vocab/tiny-story.merges"
 
   train_file = "data/TinyStoriesV2-GPT4-train.txt"
-  model_file = "data/LLM-TinyStories.model"
+  model_file = "model/LLM-TinyStories.model"
+
+  hlm_file = "data/hlm.txt"
+  hlm_data_file = "data/hlm.dat"
+  hlm_model_file = "model/hlm.model"
 
   iters = 10000
   batch_size = 16
@@ -86,9 +92,12 @@ if __name__ == "__main__":
 
   max_l2_norm = 1e-2
 
-  tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
+  # tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
   # load_tokened_text_to_file(tokenizer, train_file, memmap_path)
-  tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
+  # tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
+
+  tokenizer = SimpleChineseTokenizer(hlm_file)
+  tokenized_train_data = np.memmap(hlm_data_file, dtype="uint16", mode="r")
 
   model = Transformer(tokenizer.vocab_size(), context_length, d_model, num_layers, num_heads, d_ff, rope_theta, device=device)
   optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2, eps=1e-8, betas=(0.9, 0.999))
@@ -110,4 +119,5 @@ if __name__ == "__main__":
     clip_gradient(model.parameters(), max_l2_norm)
     optimizer.step()
 
-  save_checkpoint(model, optimizer, iters, model_file)
+  # save_checkpoint(model, optimizer, iters, model_file)
+  save_checkpoint(model, optimizer, iters, hlm_model_file)
