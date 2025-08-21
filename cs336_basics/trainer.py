@@ -92,12 +92,12 @@ if __name__ == "__main__":
 
   max_l2_norm = 1e-2
 
-  # tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
+  tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
   # load_tokened_text_to_file(tokenizer, train_file, memmap_path)
-  # tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
+  tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
 
-  tokenizer = SimpleChineseTokenizer(hlm_file)
-  tokenized_train_data = np.memmap(hlm_data_file, dtype="uint16", mode="r")
+  # tokenizer = SimpleChineseTokenizer(hlm_file)
+  # tokenized_train_data = np.memmap(hlm_data_file, dtype="uint16", mode="r")
 
   model = Transformer(tokenizer.vocab_size(), context_length, d_model, num_layers, num_heads, d_ff, rope_theta, device=device)
   optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2, eps=1e-8, betas=(0.9, 0.999))
@@ -119,5 +119,5 @@ if __name__ == "__main__":
     clip_gradient(model.parameters(), max_l2_norm)
     optimizer.step()
 
-  # save_checkpoint(model, optimizer, iters, model_file)
-  save_checkpoint(model, optimizer, iters, hlm_model_file)
+  save_checkpoint(model, optimizer, iters, model_file)
+  # save_checkpoint(model, optimizer, iters, hlm_model_file)

@@ -65,15 +65,15 @@ if __name__ == "__main__":
   d_ff = 1344
   rope_theta = 10000
 
-  # stop_word = "<|endoftext|>"
-  stop_word = None
+  stop_word = "<|endoftext|>"
+  # stop_word = None
 
-  # tokenizer = Tokenizer.from_files(vocab_path, merges_path, [stop_word])
-  tokenizer = SimpleChineseTokenizer(hlm_file)
+  tokenizer = Tokenizer.from_files(vocab_path, merges_path, [stop_word])
+  # tokenizer = SimpleChineseTokenizer(hlm_file)
   model = Transformer(tokenizer.vocab_size(), context_length, d_model, num_layers, num_heads, d_ff, rope_theta, device=device)
   from cs336_basics.trainer import load_checkpoint
   # load_checkpoint(model_file, model, None)
-  load_checkpoint(hlm_model_file, model, None)
+  load_checkpoint(model_file, model, None)
 
   generator = Generator(model, tokenizer, 200, stop_word, device=device)
   
