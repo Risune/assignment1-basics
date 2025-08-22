@@ -3,7 +3,7 @@ import random
 import os
 import typing
 import numpy as np
-from cs336_basics.tokenizer import Tokenizer, SimpleChineseTokenizer
+from cs336_basics.tokenizer import Tokenizer, SimpleChineseTokenizer, ChineseTokenizer
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 from cs336_basics.module import Transformer
 from cs336_basics.opt import AdamW
@@ -79,7 +79,9 @@ if __name__ == "__main__":
 
   hlm_file = "data/hlm.txt"
   hlm_data_file = "data/hlm.dat"
-  hlm_model_file = "model/hlm.model"
+  hlm_model_file = "model/hlm_bpe.model"
+  hlm_vocab = "vocab/hlm_bpe.vocab"
+  hlm_merges = "vocab/hlm_bpe.merges"
 
   iters = 5000
   batch_size = 32
@@ -92,12 +94,13 @@ if __name__ == "__main__":
 
   max_l2_norm = 1e-2
 
-  tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
+  # tokenizer = Tokenizer.from_files(vocab_path, merges_path, ["<|endoftext|>"])
   # load_tokened_text_to_file(tokenizer, train_file, memmap_path)
-  tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
+  # tokenized_train_data = np.memmap(memmap_path, dtype="uint16", mode="r")
 
   # tokenizer = SimpleChineseTokenizer(hlm_file)
-  # tokenized_train_data = np.memmap(hlm_data_file, dtype="uint16", mode="r")
+  tokenizer = ChineseTokenizer.from_files(vocab_path, merges_path)
+  tokenized_train_data = np.memmap(hlm_data_file, dtype="uint16", mode="r")
 
   model = Transformer(tokenizer.vocab_size(), context_length, d_model, num_layers, num_heads, d_ff, rope_theta, device=device)
   optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2, eps=1e-8, betas=(0.9, 0.999))

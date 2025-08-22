@@ -7,7 +7,7 @@ PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s
 
 
 class Pair():
-  def __init__(self, bs1:bytes, bs2:bytes, bs1_id:int, bs2_id:int):
+  def __init__(self, bs1:bytes|str, bs2:bytes|str, bs1_id:int, bs2_id:int):
     self.bs1 = bs1
     self.bs2 = bs2
     self.bs1_id = bs1_id
@@ -20,7 +20,7 @@ class Pair():
     return ("%s|%s" % (self.bs1_id, self.bs2_id)).__hash__()
   
   def __eq__(self, value):
-    return self.bs1 == value.bs1 and self.bs2 == value.bs2
+    return self.bs1_id == value.bs1_id and self.bs2_id == value.bs2_id
   
   def __repr__(self):
     return (self.bs1, self.bs2).__repr__()
@@ -119,10 +119,10 @@ def build_bpe_tokenizer(
   pair_counter = Counter[Pair]()
   pair_to_word_cache = defaultdict[Pair, set[Word]](set)
   for word in words.values():
-      pairs = get_pairs(vocab, word)
-      for pair in pairs:
-        pair_counter[pair] += word.count
-        pair_to_word_cache[pair].add(word)
+    pairs = get_pairs(vocab, word)
+    for pair in pairs:
+      pair_counter[pair] += word.count
+      pair_to_word_cache[pair].add(word)
   print("init pair counter, cost: %ss" % (time.time() - start))
 
   while len(vocab) < vocab_size:
@@ -156,7 +156,7 @@ def build_bpe_tokenizer(
 
 
 class Tokenizer():
-  def __init__(self, vocab:dict[int, bytes], merges:list[tuple[bytes, bytes]], special_tokens:list[str] | None=None):
+  def __init__(self, vocab:dict[int, bytes|str], merges:list[tuple[bytes|str, bytes|str]], special_tokens:list[str] | None=None):
     self.vocab = vocab
     self.vocab_revert = {y: x for x, y in vocab.items()}
     self.merges = {y: x for x, y in enumerate(merges)}
@@ -248,7 +248,104 @@ class SimpleChineseTokenizer():
     return len(self.vocab)
 
 
+def build_chinese_bpe_tokenizer(
+    input_path: str,
+    vocab_size: int) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+  
+  start = time.time()
+  
+  with open(input_path) as fp:
+    text = fp.read()
+    chars = sorted(list(set(text)))
+    print("file loaded, cost: %ss" % (time.time() - start))
+
+  # init vocab
+  vocab = dict[int, str]()
+  reversed_vocab = dict[str, int]()
+  merges = list[tuple[str, str]]()
+  idx = 0
+  for i in chars:
+    vocab[idx] = i
+    reversed_vocab[i] = idx
+    idx += 1
+
+  encode = [reversed_vocab[x] for x in text]
+  pair_counter = Counter[Pair]()
+  for i in range(len(encode) - 1):
+    token_ids = (encode[i], encode[i+1])
+    tokens = (vocab[_id] for _id in token_ids)
+    pair = Pair(*tokens, *token_ids)
+    pair_counter[pair] += 1
+  print("init pair counter, cost: %ss" % (time.time() - start))
+
+  while len(vocab) < vocab_size:
+    if len(vocab) % 1000 == 0:
+      print("processing %s, cost: %s" % (len(vocab), time.time() - start))
+    items = list(pair_counter.items())
+    pair, _ = max(items, key=lambda x:(x[1], x[0].to_tuple()))
+    merges.append(pair.to_tuple())
+    vocab[idx] = "".join(pair.to_tuple())
+    del pair_counter[pair]
+
+    for i in range(len(encode) - 1):
+      if encode[i] == pair.bs1_id and encode[i+1] == pair.bs2_id:
+        if i > 0 and encode[i-1] != -1:
+          pre = Pair(vocab[encode[i-1]], vocab[encode[i]], encode[i-1], encode[i])
+          pair_counter[pre] -= 1
+        if i < len(encode) - 2:
+          next = Pair(vocab[encode[i+1]], vocab[encode[i+2]], encode[i+1], encode[i+2])
+          pair_counter[next] -= 1
+        encode[i] = idx
+        encode[i+1] = -1
+    encode = [x for x in encode if x != -1]
+    idx += 1
+
+  print("done, cost: %ss" % (time.time() - start))
+  return vocab, merges
+
+
+class ChineseTokenizer():
+  def __init__(self, vocab, merges):
+    self.vocab = vocab
+    self.vocab_revert = {y: x for x, y in vocab.items()}
+    self.merges = {y: x for x, y in enumerate(merges)}
+
+  @staticmethod
+  def from_files(vocab_filepath:str, merge_filepath:str):
+    import pickle
+    with open(vocab_filepath, "rb") as vp:
+      with open(merge_filepath, "rb") as mp:
+        vocab = pickle.load(vp)
+        merges = pickle.load(mp)
+        return ChineseTokenizer(vocab=vocab, merges=merges)
+
+  def encode(self, text):
+    encode = [self.vocab_revert[x] for x in text if x in self.vocab_revert]
+    merged = True
+    while merged:
+      idx, merged_id, priority = -1, -1, len(self.merges)
+      for i in range(len(encode) - 1):
+        target = (self.vocab[encode[i]], self.vocab[encode[i+1]])
+        if target in self.merges:
+          if priority > self.merges[target]:
+            priority = self.merges[target]
+            idx = i
+            merged_id = self.vocab_revert["".join(target)]
+      merged = idx >= 0
+      if merged:
+          encode[idx] = merged_id
+          del encode[idx+1]
+    return encode
+  
+  def decode(self, ids: list[int]) -> str:
+    return "".join([self.vocab[id] for id in ids if id in self.vocab])
+
+  def vocab_size(self):
+    return len(self.vocab)
+
+
 if __name__ == "__main__":
+  ...
   # tokenizer = SimpleChineseTokenizer("data/hlm.txt")
   # with open("data/hlm.txt") as fp:
   #   text = fp.read()
@@ -257,10 +354,3 @@ if __name__ == "__main__":
   # np_fp = np.memmap("data/hlm.dat", dtype="uint16", mode="w+", shape=(len(encoded)))
   # np_fp[:] = encoded
   # np_fp.flush()
-  import numpy as np
-  hlm_file = "data/hlm.txt"
-  hlm_data = "data/hlm.dat"
-  tokenizer = SimpleChineseTokenizer(hlm_file)
-  tokenized_train_data = np.memmap(hlm_data, dtype="uint16", mode="r")
-  sample = tokenized_train_data[:30]
-  print(tokenizer.decode(sample))
