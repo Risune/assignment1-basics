@@ -345,7 +345,6 @@ class ChineseTokenizer():
 
 
 if __name__ == "__main__":
-  ...
   # tokenizer = SimpleChineseTokenizer("data/hlm.txt")
   # with open("data/hlm.txt") as fp:
   #   text = fp.read()
@@ -354,3 +353,4 @@ if __name__ == "__main__":
   # np_fp = np.memmap("data/hlm.dat", dtype="uint16", mode="w+", shape=(len(encoded)))
   # np_fp[:] = encoded
   # np_fp.flush()
+  ...

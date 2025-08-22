@@ -1,5 +1,5 @@
 from cs336_basics.module import Transformer
-from cs336_basics.tokenizer import Tokenizer, SimpleChineseTokenizer
+from cs336_basics.tokenizer import Tokenizer, SimpleChineseTokenizer, ChineseTokenizer
 from cs336_basics.utils import softmax
 from collections.abc import Iterable
 import einops
@@ -57,6 +57,9 @@ if __name__ == "__main__":
   hlm_file = "data/hlm.txt"
   hlm_data_file = "data/hlm.dat"
   hlm_model_file = "model/hlm.model"
+  hlm_bpe_model_file = "model/hlm_bpe.model"
+  hlm_vocab_path = "vocab/hlm_bpe.vocab"
+  hlm_merges_path = "vocab/hlm_bpe.merges"
 
   context_length = 256
   d_model = 512
@@ -68,12 +71,13 @@ if __name__ == "__main__":
   stop_word = "<|endoftext|>"
   # stop_word = None
 
-  tokenizer = Tokenizer.from_files(vocab_path, merges_path, [stop_word])
+  # tokenizer = Tokenizer.from_files(vocab_path, merges_path, [stop_word])
   # tokenizer = SimpleChineseTokenizer(hlm_file)
+  tokenizer = ChineseTokenizer.from_files(hlm_vocab_path, hlm_merges_path)
   model = Transformer(tokenizer.vocab_size(), context_length, d_model, num_layers, num_heads, d_ff, rope_theta, device=device)
   from cs336_basics.trainer import load_checkpoint
   # load_checkpoint(model_file, model, None)
-  load_checkpoint(model_file, model, None)
+  load_checkpoint(hlm_bpe_model_file, model, None)
 
   generator = Generator(model, tokenizer, 200, stop_word, device=device)
   
