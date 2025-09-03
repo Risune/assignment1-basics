@@ -28,11 +28,13 @@ class AdamW(torch.optim.Optimizer):
 
 
 class CosinLRScheduler():
-  def __init__(self, min_lr: float, max_lr: float, warmup_iters: int, cosine_cycle_iters: int):
+  def __init__(self, min_lr: float, max_lr: float, warmup_iters: int, cosine_cycle_iters: int, opt: AdamW = None):
     self.min_lr = min_lr
     self.max_lr = max_lr
     self.warmup_iters = warmup_iters
     self.cosin_cycle_iters = cosine_cycle_iters
+    self.opt = opt
+    self.iters = 0
   
   def get_lr(self, iters: int):
     if iters < self.warmup_iters:
@@ -42,3 +44,9 @@ class CosinLRScheduler():
         (1 + math.cos(math.pi * (iters - self.warmup_iters) / (self.cosin_cycle_iters - self.warmup_iters)))
     else:
       return self.min_lr
+
+  def step(self):
+    self.iters += 1
+    if self.opt is not None:
+      for group in self.opt.param_groups:
+        group["lr"] = self.get_lr(self.iters)
